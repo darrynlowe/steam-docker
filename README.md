@@ -9,3 +9,4 @@ The key to doing this was:
 
 It has some additional complexity because I'm running an Nvidia 1080 Ti which is now not supported by the latest Nvidia drivers. So there's some butchery from the AUR to bring down the legacy driver set inside the container since it's needed for dependencies. This can create a situation with version mismatch with the host, so make sure the host is also up to date.
 
+Full credit to https://github.com/Steam-Headless/docker-steam-headless for the original model.
