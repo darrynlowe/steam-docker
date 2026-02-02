@@ -1,0 +1,105 @@
+services:
+  steam-headless:
+    container_name: steam-headless    
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+
+    shm_size: 2G
+
+    ipc: host # Could also be set to 'shareable'
+    pid: host
+
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 524288
+
+    #user: "0:0"
+
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_NICE
+
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+
+    # GPU PASSTHROUGH
+    runtime: nvidia
+
+    # NETWORK:
+    ## NOTE:  With this configuration, if we do not use the host network, then physical device input
+    ##        is not possible and your USB connected controllers will not work in steam games.
+    network_mode: host
+    hostname: ${NAME}
+    extra_hosts:
+      - "${NAME}:127.0.0.1"
+
+    privileged: true
+    
+    # ENVIRONMENT:
+    ## Read all config variables from the .env file
+    environment:
+      - STEAM_RUNTIME=0
+      - TZ=America/Toronto
+      - DISPLAY=:55
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=${UMASK}
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+      - ENABLE_EVDEV_INPUTS=true
+      #- PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native
+      - XORG_SOCKET_DIR="/tmp/.X11-unix" 
+      - XDG_RUNTIME_DIR="/tmp/.X11-unix/run" 
+      - XDG_SESSION_TYPE="x11" 
+      - SEATD_SOCK=/run/seatd.sock
+      - WLR_DRM_DEVICES=/dev/dri/card2
+
+    # DEVICES:
+    devices:
+      - /dev/fuse
+      - /dev/uinput
+#      - /dev/input
+      - /dev/snd     # needed since pulseaudio not running on host
+      - /dev/nvidia-modeset
+      - /dev/hidraw0
+      - /dev/hidraw1
+      - /dev/hidraw2
+
+    # Ensure container access to devices 13:*
+    device_cgroup_rules:
+      - 'c 10:* rmw'    # uinput
+      - 'c 13:* rmw'    # input (event devices)
+
+    group_add:
+      - input
+
+    # VOLUMES:
+    volumes:
+      - ./entrypoint.sh:/usr/local/bin/entrypoint.sh
+      - ./start-x.sh:/usr/local/bin/start-x.sh
+
+      - /etc/machine-id:/etc/machine-id:ro
+      - /usr/lib/udev/rules.d:/usr/lib/udev/rules.d
+
+      - ./etc/X11/xorg.conf:/etc/X11/xorg.conf
+      - ./etc/asound.conf:/etc/asound.conf
+
+      # The location of your home directory.
+      - ./home-darryn:/home/darryn/:rw
+      - ./home-darryn:/root/:rw
+
+      - /dev/input:/dev/input
+
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
+      - /run/seatd.sock:/run/seatd.sock
+
+      - ./.X11-unix/:/tmp/.X11-unix/:rw
+
+      - /run/udev:/run/udev:ro
+#      - /sys:/sys
